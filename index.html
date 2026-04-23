@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloudflare DNS Manager V2</title>
+    <title>Cloudflare DNS Manager V3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -31,7 +31,7 @@
         <!-- Header -->
         <div class="flex justify-between items-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-4">
             <div>
-                <h1 class="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-wide">DNS MANAGER V2</h1>
+                <h1 class="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-wide">DNS MANAGER V3</h1>
                 <p class="text-slate-500 dark:text-slate-400 text-xs mt-1">Client-Side Dashboard</p>
             </div>
             <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
@@ -47,7 +47,7 @@
             <div>
                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">1. Cloudflare API Token / Global Key</label>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="email" id="apiEmail" placeholder="Email (Opsional - Isi jika pakai Global Key)" 
+                    <input type="email" id="apiEmail" placeholder="Email (Wajib jika pakai Global Key)" 
                         class="w-full sm:w-1/3 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-sm">
                     <input type="password" id="apiToken" placeholder="Masukkan API Token / Global Key di sini..." 
                         class="flex-1 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-sm">
@@ -55,17 +55,20 @@
                         Load Domain
                     </button>
                 </div>
-                <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    <p>Syarat Token: Izin <strong class="text-blue-500">Zone-Zone-Read</strong> dan <strong class="text-blue-500">Zone-DNS-Edit</strong></p>
-                    <p class="mt-1 text-yellow-600 dark:text-yellow-500">💡 Jika menggunakan <b>Global API Key</b>, pastikan Anda juga mengisi kolom Email Anda.</p>
-                </div>
             </div>
 
-            <div class="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <input type="checkbox" id="useProxy" class="w-4 h-4 text-blue-600 rounded bg-white dark:bg-dark-input" checked>
-                <label for="useProxy" class="text-xs text-yellow-800 dark:text-yellow-400">
-                    <strong>Gunakan CORS Proxy</strong> (Wajib dicentang jika aplikasi dijalankan dari browser agar tidak diblokir).
-                </label>
+            <!-- MULTI PROXY SELECTOR -->
+            <div class="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
+                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Pengaturan Server Proxy (Solusi Error)</label>
+                <select id="proxySelect" onchange="saveProxyPref()" class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer">
+                    <option value="corsproxy">Server 1 (corsproxy.io) - Direkomendasikan</option>
+                    <option value="corseu">Server 2 (cors.eu.org) - Alternatif 1</option>
+                    <option value="thingproxy">Server 3 (thingproxy.freeboard.io) - Alternatif 2</option>
+                    <option value="direct">Tanpa Proxy (Hanya jika error terus)</option>
+                </select>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
+                    💡 <b>TIPS:</b> Jika "Load Domain" gagal dan berwarna merah, silakan ganti server proxy di atas. Provider internet Indonesia sering memblokir server tertentu.
+                </p>
             </div>
 
             <div id="domainSection" class="hidden pt-4 border-t border-light-border dark:border-dark-border">
@@ -158,11 +161,15 @@
             }
             updateThemeIcon();
             
-            const savedToken = localStorage.getItem('cfApiToken_v2');
+            // Muat Data Tersimpan
+            const savedToken = localStorage.getItem('cfApiToken_v3');
             if(savedToken) document.getElementById('apiToken').value = savedToken;
             
-            const savedEmail = localStorage.getItem('cfApiEmail_v2');
+            const savedEmail = localStorage.getItem('cfApiEmail_v3');
             if(savedEmail) document.getElementById('apiEmail').value = savedEmail;
+            
+            const savedProxy = localStorage.getItem('cfProxyPref');
+            if(savedProxy) document.getElementById('proxySelect').value = savedProxy;
         }
 
         function toggleTheme() {
@@ -176,6 +183,10 @@
             document.getElementById('themeIcon').innerHTML = isDark 
                 ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>' 
                 : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+        }
+
+        function saveProxyPref() {
+            localStorage.setItem('cfProxyPref', document.getElementById('proxySelect').value);
         }
 
         document.addEventListener('DOMContentLoaded', initTheme);
@@ -199,38 +210,39 @@
             `;
             box.classList.remove('hidden');
 
-            // Auto hide success message after 5 seconds
             if(type === 'success') {
                 setTimeout(() => box.classList.add('hidden'), 5000);
             }
         }
 
-        // --- 3. ROBUST API FETCH LOGIC ---
+        // --- 3. ROBUST API FETCH LOGIC WITH MULTI PROXY ---
         async function cfApiCall(endpoint, method = 'GET', body = null) {
             const token = document.getElementById('apiToken').value.trim();
             const email = document.getElementById('apiEmail').value.trim();
             if (!token) throw new Error("API Token / Global Key tidak boleh kosong!");
             
-            localStorage.setItem('cfApiToken_v2', token);
-            localStorage.setItem('cfApiEmail_v2', email);
+            localStorage.setItem('cfApiToken_v3', token);
+            localStorage.setItem('cfApiEmail_v3', email);
 
-            const useProxy = document.getElementById('useProxy').checked;
+            const proxyMode = document.getElementById('proxySelect').value;
             const targetUrl = 'https://api.cloudflare.com/client/v4' + endpoint;
             
-            // Menggunakan corsproxy.io dengan URI Encode agar header diteruskan dengan benar
-            const fetchUrl = useProxy ? 'https://corsproxy.io/?' + encodeURIComponent(targetUrl) : targetUrl;
+            // Konfigurasi URL berdasarkan pilihan Proxy
+            let fetchUrl = targetUrl;
+            if (proxyMode === 'corsproxy') {
+                fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+            } else if (proxyMode === 'corseu') {
+                fetchUrl = 'https://cors.eu.org/' + targetUrl;
+            } else if (proxyMode === 'thingproxy') {
+                fetchUrl = 'https://thingproxy.freeboard.io/fetch/' + targetUrl;
+            }
 
-            // Menyiapkan Header berdasarkan jenis otentikasi yang digunakan
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-
+            // Menyiapkan Header Otentikasi
+            const headers = { 'Content-Type': 'application/json' };
             if (email !== "") {
-                // Jika email diisi, gunakan otentikasi Global API Key
                 headers['X-Auth-Email'] = email;
                 headers['X-Auth-Key'] = token;
             } else {
-                // Jika email kosong, gunakan otentikasi Custom API Token
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
@@ -241,14 +253,13 @@
                     body: body ? JSON.stringify(body) : null
                 });
 
-                // Cek apakah response berupa JSON
-                const contentType = response.headers.get("content-type");
+                // Deteksi jika proxy menolak dan membalas dengan HTML
+                const contentType = response.headers.get("content-type") || "";
                 let data = null;
-                if (contentType && contentType.indexOf("application/json") !== -1) {
+                if (contentType.includes("application/json")) {
                     data = await response.json();
                 } else {
-                    const textData = await response.text();
-                    throw new Error(`Server Proxy/CF mengembalikan data non-JSON: ${textData.substring(0, 50)}...`);
+                    throw new Error(`Proxy error atau sedang sibuk. Ganti ke Server Proxy lain.`);
                 }
 
                 if (!response.ok || !data.success) {
@@ -262,9 +273,8 @@
 
             } catch (err) {
                 console.error("API Fetch Error Detail:", err);
-                // Mendeteksi masalah koneksi (misal CORS atau Proxy Down)
                 if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-                    throw new Error("Koneksi ditolak oleh browser (CORS Error) atau Proxy sedang down. Pastikan 'Gunakan Proxy' dicentang.");
+                    throw new Error("Koneksi diblokir. Ganti 'Server Proxy' di menu atas ke Server 2 atau 3, lalu coba lagi.");
                 }
                 throw err;
             }
@@ -283,7 +293,7 @@
                 const zones = await cfApiCall('/zones');
                 
                 if (zones.length === 0) {
-                    throw new Error("Tidak ada domain yang ditemukan. Pastikan Token memiliki izin 'Zone:Read'.");
+                    throw new Error("Tidak ada domain yang ditemukan. Periksa kembali email dan kunci API Anda.");
                 }
 
                 const select = document.getElementById('domainSelect');
@@ -299,7 +309,7 @@
                 document.getElementById('domainSection').classList.remove('hidden');
                 showAlert(`Berhasil memuat ${zones.length} domain! Silakan pilih di menu drop-down.`, 'success');
             } catch (error) {
-                showAlert(`Gagal Memuat Domain: ${error.message}`);
+                showAlert(`Error: ${error.message}`);
                 document.getElementById('domainSection').classList.add('hidden');
                 document.getElementById('workspaceSection').classList.add('hidden');
             } finally {
@@ -352,7 +362,6 @@
             const ip = document.getElementById('targetIp').value.trim();
             const proxied = document.getElementById('proxied').checked;
             
-            // Validasi nama subdomain jika pengguna iseng menaruh ".domain.com" di input
             const cleanSub = sub.replace(`.${zoneName}`, ''); 
             const fullName = `${cleanSub}.${zoneName}`;
 
@@ -365,13 +374,12 @@
                     type: 'A',
                     name: fullName,
                     content: ip,
-                    ttl: 1, // 1 = Auto
+                    ttl: 1,
                     proxied: proxied
                 });
 
                 showAlert(`Berhasil! Subdomain <strong>${fullName}</strong> telah mengarah ke <strong>${ip}</strong>`, 'success');
                 
-                // Reset input
                 document.getElementById('subdomain').value = '';
                 document.getElementById('targetIp').value = '';
                 document.getElementById('proxied').checked = false;
@@ -396,7 +404,6 @@
             document.getElementById('alertBox').classList.add('hidden');
 
             try {
-                // Ambil hingga 100 record agar tidak perlu pagination di awal
                 const records = await cfApiCall(`/zones/${zoneId}/dns_records?per_page=100`);
                 currentRecords = records;
                 renderDnsTable();
@@ -484,7 +491,7 @@
             }
 
             btn.innerText = '🗑️ Hapus Terpilih';
-            loadDnsRecords(); // Segarkan tabel otomatis
+            loadDnsRecords();
         }
     </script>
 </body>
