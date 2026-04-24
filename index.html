@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloudflare DNS Manager V3</title>
+    <title>Cloudflare DNS Manager V4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -22,477 +22,743 @@
         .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .account-card { transition: all 0.15s ease; }
+        .account-card:hover { transform: translateY(-1px); }
+        .account-card.active { border-color: #3b82f6 !important; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+        .proxy-toggle-btn { transition: all 0.2s ease; }
+        .proxy-toggle-btn:hover { transform: scale(1.05); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.2s ease forwards; }
     </style>
 </head>
 <body class="bg-light-bg dark:bg-dark-bg min-h-screen p-4 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
 
-    <div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-5">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-4">
+        <div>
+            <h1 class="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-wide">DNS MANAGER V4</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">Multi-Account · Proxy Toggle · Client-Side</p>
+        </div>
+        <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+            <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+        </button>
+    </div>
+
+    <!-- Global Alert Box -->
+    <div id="alertBox" class="hidden p-4 rounded-lg text-sm border font-medium"></div>
+
+    <!-- ===== SECTION: MANAJEMEN AKUN ===== -->
+    <div class="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md overflow-hidden">
         
-        <!-- Header -->
-        <div class="flex justify-between items-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-4">
+        <!-- Header akun -->
+        <div class="flex justify-between items-center p-4 border-b border-light-border dark:border-dark-border">
             <div>
-                <h1 class="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-wide">DNS MANAGER V3</h1>
-                <p class="text-slate-500 dark:text-slate-400 text-xs mt-1">Client-Side Dashboard</p>
+                <h2 class="text-sm font-bold text-slate-700 dark:text-slate-200">Manajemen Akun</h2>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Simpan beberapa akun Cloudflare, klik untuk aktifkan</p>
             </div>
-            <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
-                <svg id="themeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+            <button onclick="toggleAddAccountForm()" id="btnShowAddAccount"
+                class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                Tambah Akun
             </button>
         </div>
 
-        <!-- Global Alert Box -->
-        <div id="alertBox" class="hidden p-4 rounded-lg text-sm border font-medium"></div>
-
-        <!-- Section 1: Konfigurasi API -->
-        <div class="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-6 space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">1. Cloudflare API Token / Global Key</label>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="email" id="apiEmail" placeholder="Email (Wajib jika pakai Global Key)" 
-                        class="w-full sm:w-1/3 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-sm">
-                    <input type="password" id="apiToken" placeholder="Masukkan API Token / Global Key di sini..." 
-                        class="flex-1 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-sm">
-                    <button onclick="fetchDomains()" id="btnLoadDomain" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-bold transition shadow whitespace-nowrap">
-                        Load Domain
-                    </button>
+        <!-- Form tambah akun (hidden by default) -->
+        <div id="addAccountForm" class="hidden p-4 border-b border-light-border dark:border-dark-border bg-slate-50 dark:bg-slate-900/40 fade-in">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="sm:col-span-2">
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Nama / Label Akun</label>
+                    <input type="text" id="newAccountLabel" placeholder="contoh: Akun Utama, VPS Project, dll"
+                        class="w-full bg-white dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-sm">
                 </div>
-            </div>
-
-            <!-- MULTI PROXY SELECTOR -->
-            <div class="mt-4 pt-4 border-t border-light-border dark:border-dark-border">
-                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Pengaturan Server Proxy (Solusi Error)</label>
-                <select id="proxySelect" onchange="saveProxyPref()" class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer">
-                    <option value="corsproxy">Server 1 (corsproxy.io) - Direkomendasikan</option>
-                    <option value="corseu">Server 2 (cors.eu.org) - Alternatif 1</option>
-                    <option value="thingproxy">Server 3 (thingproxy.freeboard.io) - Alternatif 2</option>
-                    <option value="direct">Tanpa Proxy (Hanya jika error terus)</option>
-                </select>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
-                    💡 <b>TIPS:</b> Jika "Load Domain" gagal dan berwarna merah, silakan ganti server proxy di atas. Provider internet Indonesia sering memblokir server tertentu.
-                </p>
-            </div>
-
-            <div id="domainSection" class="hidden pt-4 border-t border-light-border dark:border-dark-border">
-                <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">2. Pilih Domain Anda</label>
-                <select id="domainSelect" onchange="onDomainChange()" class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 cursor-pointer font-bold">
-                    <option value="" disabled selected>-- Pilih Domain --</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Section 2: Workspace -->
-        <div id="workspaceSection" class="hidden bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-6">
-            
-            <div class="flex bg-light-input dark:bg-dark-bg p-1 rounded-lg mb-6 border border-light-border dark:border-dark-border">
-                <button onclick="switchTab('create')" id="tabCreate" class="flex-1 py-2 text-sm font-bold rounded-md transition-all text-white bg-blue-600 shadow">Buat Subdomain</button>
-                <button onclick="switchTab('manage')" id="tabManage" class="flex-1 py-2 text-sm font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">Kelola & Hapus (Cek DNS)</button>
-            </div>
-
-            <!-- TAB: CREATE -->
-            <form id="createForm" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Nama Subdomain</label>
-                    <div class="flex items-center">
-                        <input type="text" id="subdomain" required placeholder="misal: api, vps, server1" 
-                            class="flex-1 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-l-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-sm">
-                        <span id="domainSuffix" class="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-l-0 border-light-border dark:border-dark-border rounded-r-lg px-4 py-3 text-sm font-bold">.domain.com</span>
-                    </div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Email (Wajib jika Global Key)</label>
+                    <input type="email" id="newAccountEmail" placeholder="email@example.com"
+                        class="w-full bg-white dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-sm">
                 </div>
-
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Target IP (IPv4)</label>
-                    <input type="text" id="targetIp" required placeholder="192.168.1.1" 
-                        class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-sm font-mono">
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">API Token / Global Key</label>
+                    <input type="password" id="newAccountToken" placeholder="Token atau Global API Key"
+                        class="w-full bg-white dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-sm">
                 </div>
-
-                <div class="flex items-center gap-2 mt-2">
-                    <input type="checkbox" id="proxied" class="w-4 h-4 rounded text-blue-600 bg-light-input dark:bg-dark-input border-light-border dark:border-dark-border">
-                    <label for="proxied" class="text-sm text-slate-600 dark:text-slate-300">Aktifkan Cloudflare Proxy (Awan Orange)</label>
-                </div>
-
-                <button type="submit" id="btnCreate" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg text-sm uppercase mt-4 tracking-wide">
-                    Buat Record Baru
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button onclick="saveNewAccount()" class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow">
+                    ✓ Simpan Akun
                 </button>
-            </form>
-
-            <!-- TAB: MANAGE -->
-            <div id="manageView" class="hidden space-y-4">
-                <div class="flex justify-between items-center bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg border border-light-border dark:border-dark-border">
-                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300">Daftar DNS Record</h3>
-                    <button onclick="loadDnsRecords()" id="btnReloadDns" class="text-xs bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2 rounded-lg transition shadow border border-light-border dark:border-dark-border font-medium">
-                        🔄 Refresh
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto custom-scrollbar border border-light-border dark:border-dark-border rounded-lg max-h-[400px]">
-                    <table class="w-full text-left text-xs whitespace-nowrap">
-                        <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
-                            <tr class="text-slate-600 dark:text-slate-300 border-b border-light-border dark:border-dark-border">
-                                <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()" class="w-4 h-4 rounded"></th>
-                                <th class="p-3 font-semibold">Tipe</th>
-                                <th class="p-3 font-semibold">Nama</th>
-                                <th class="p-3 font-semibold">Target / Content</th>
-                                <th class="p-3 font-semibold text-center">Proxy</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dnsTableBody" class="divide-y divide-light-border dark:divide-dark-border text-slate-700 dark:text-slate-300 bg-white dark:bg-transparent">
-                            <tr><td colspan="5" class="p-8 text-center text-slate-500">Pilih domain dan refresh data.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="flex flex-col sm:flex-row justify-between items-center pt-2 gap-4">
-                    <span id="selectedCount" class="text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md">0 record terpilih</span>
-                    <button onclick="bulkDeleteRecords()" id="btnBulkDelete" disabled class="w-full sm:w-auto bg-red-600 hover:bg-red-500 disabled:bg-slate-300 disabled:dark:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-lg">
-                        🗑️ Hapus Terpilih
-                    </button>
-                </div>
+                <button onclick="toggleAddAccountForm()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-xs font-bold px-4 py-2 rounded-lg transition">
+                    Batal
+                </button>
             </div>
         </div>
 
+        <!-- Daftar akun tersimpan -->
+        <div id="accountList" class="p-4 space-y-2">
+            <p class="text-sm text-slate-400 dark:text-slate-500 text-center py-4" id="noAccountMsg">Belum ada akun tersimpan. Klik "Tambah Akun" untuk mulai.</p>
+        </div>
     </div>
 
-    <script>
-        // --- 1. THEME & INIT ---
-        function initTheme() {
-            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            updateThemeIcon();
-            
-            // Muat Data Tersimpan
-            const savedToken = localStorage.getItem('cfApiToken_v3');
-            if(savedToken) document.getElementById('apiToken').value = savedToken;
-            
-            const savedEmail = localStorage.getItem('cfApiEmail_v3');
-            if(savedEmail) document.getElementById('apiEmail').value = savedEmail;
-            
-            const savedProxy = localStorage.getItem('cfProxyPref');
-            if(savedProxy) document.getElementById('proxySelect').value = savedProxy;
+    <!-- ===== SECTION: KONFIGURASI AKTIF ===== -->
+    <div id="activeConfigSection" class="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-5 space-y-4">
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Akun Aktif / Manual Input</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="email" id="apiEmail" placeholder="Email (Wajib jika pakai Global Key)"
+                    class="w-full sm:w-1/3 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2.5 focus:outline-none focus:border-blue-500 text-sm">
+                <input type="password" id="apiToken" placeholder="API Token / Global Key"
+                    class="flex-1 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2.5 focus:outline-none focus:border-blue-500 text-sm">
+                <button onclick="fetchDomains()" id="btnLoadDomain" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow whitespace-nowrap">
+                    Load Domain
+                </button>
+            </div>
+            <p id="activeAccountLabel" class="text-[11px] text-blue-500 dark:text-blue-400 mt-1.5 hidden font-medium"></p>
+        </div>
+
+        <!-- Proxy Selector -->
+        <div class="pt-3 border-t border-light-border dark:border-dark-border">
+            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Server Proxy CORS</label>
+            <select id="proxySelect" onchange="saveProxyPref()" class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer">
+                <option value="corsproxy">Server 1 (corsproxy.io) - Direkomendasikan</option>
+                <option value="corseu">Server 2 (cors.eu.org) - Alternatif 1</option>
+                <option value="thingproxy">Server 3 (thingproxy.freeboard.io) - Alternatif 2</option>
+                <option value="direct">Tanpa Proxy (Gunakan jika error)</option>
+            </select>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">💡 Jika Load Domain gagal, ganti server proxy di atas.</p>
+        </div>
+
+        <!-- Domain Select -->
+        <div id="domainSection" class="hidden pt-3 border-t border-light-border dark:border-dark-border">
+            <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Pilih Domain</label>
+            <select id="domainSelect" onchange="onDomainChange()" class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 cursor-pointer font-bold">
+                <option value="" disabled selected>-- Pilih Domain --</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ===== SECTION: WORKSPACE ===== -->
+    <div id="workspaceSection" class="hidden bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-md p-5">
+
+        <!-- Tab Switcher -->
+        <div class="flex bg-light-input dark:bg-dark-bg p-1 rounded-lg mb-5 border border-light-border dark:border-dark-border">
+            <button onclick="switchTab('create')" id="tabCreate" class="flex-1 py-2 text-sm font-bold rounded-md transition-all text-white bg-blue-600 shadow">Buat Subdomain</button>
+            <button onclick="switchTab('manage')" id="tabManage" class="flex-1 py-2 text-sm font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">Kelola & Hapus</button>
+        </div>
+
+        <!-- TAB: CREATE -->
+        <form id="createForm" class="space-y-4">
+            <div>
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Nama Subdomain</label>
+                <div class="flex items-center">
+                    <input type="text" id="subdomain" required placeholder="misal: api, vps, server1"
+                        class="flex-1 bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-l-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-sm">
+                    <span id="domainSuffix" class="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-l-0 border-light-border dark:border-dark-border rounded-r-lg px-4 py-3 text-sm font-bold">.domain.com</span>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Target IP (IPv4)</label>
+                <input type="text" id="targetIp" required placeholder="192.168.1.1"
+                    class="w-full bg-light-input dark:bg-dark-input text-slate-900 dark:text-white border border-light-border dark:border-dark-border rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-sm font-mono">
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="proxied" class="w-4 h-4 rounded text-blue-600 bg-light-input dark:bg-dark-input border-light-border dark:border-dark-border">
+                <label for="proxied" class="text-sm text-slate-600 dark:text-slate-300">Aktifkan Cloudflare Proxy (Awan Orange 🟠)</label>
+            </div>
+            <button type="submit" id="btnCreate" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg text-sm uppercase tracking-wide">
+                Buat Record Baru
+            </button>
+        </form>
+
+        <!-- TAB: MANAGE -->
+        <div id="manageView" class="hidden space-y-4">
+            <div class="flex justify-between items-center bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg border border-light-border dark:border-dark-border">
+                <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300">Daftar DNS Record</h3>
+                <button onclick="loadDnsRecords()" id="btnReloadDns"
+                    class="text-xs bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2 rounded-lg transition shadow border border-light-border dark:border-dark-border font-medium">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar border border-light-border dark:border-dark-border rounded-lg max-h-[420px]">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                        <tr class="text-slate-600 dark:text-slate-300 border-b border-light-border dark:border-dark-border">
+                            <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()" class="w-4 h-4 rounded"></th>
+                            <th class="p-3 font-semibold">Tipe</th>
+                            <th class="p-3 font-semibold">Nama</th>
+                            <th class="p-3 font-semibold">Target / Content</th>
+                            <th class="p-3 font-semibold text-center">Proxy</th>
+                            <th class="p-3 font-semibold text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dnsTableBody" class="divide-y divide-light-border dark:divide-dark-border text-slate-700 dark:text-slate-300 bg-white dark:bg-transparent">
+                        <tr><td colspan="6" class="p-8 text-center text-slate-500">Pilih domain dan refresh data.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-center pt-1 gap-3">
+                <span id="selectedCount" class="text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md">0 record terpilih</span>
+                <button onclick="bulkDeleteRecords()" id="btnBulkDelete" disabled
+                    class="w-full sm:w-auto bg-red-600 hover:bg-red-500 disabled:bg-slate-300 disabled:dark:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow">
+                    🗑️ Hapus Terpilih
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== MODAL KONFIRMASI DELETE ===== -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl shadow-2xl p-6 max-w-sm w-full fade-in">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 dark:text-white text-sm">Konfirmasi Hapus</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400" id="deleteModalDesc"></p>
+            </div>
+        </div>
+        <p class="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+            ⚠️ Tindakan ini permanen dan tidak bisa dibatalkan!
+        </p>
+        <div class="flex gap-2">
+            <button onclick="closeDeleteModal()" class="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm font-bold py-2.5 rounded-lg transition">
+                Batal
+            </button>
+            <button onclick="confirmDelete()" id="btnConfirmDelete" class="flex-1 bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2.5 rounded-lg transition shadow">
+                Ya, Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== INISIALISASI ====================
+    let currentRecords = [];
+    let deleteCallback = null;
+
+    function initTheme() {
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
         }
+        updateThemeIcon();
 
-        function toggleTheme() {
-            document.documentElement.classList.toggle('dark');
-            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-            updateThemeIcon();
+        const savedToken = localStorage.getItem('cfApiToken_v4');
+        if (savedToken) document.getElementById('apiToken').value = savedToken;
+        const savedEmail = localStorage.getItem('cfApiEmail_v4');
+        if (savedEmail) document.getElementById('apiEmail').value = savedEmail;
+        const savedProxy = localStorage.getItem('cfProxyPref');
+        if (savedProxy) document.getElementById('proxySelect').value = savedProxy;
+
+        renderAccountList();
+    }
+
+    function toggleTheme() {
+        document.documentElement.classList.toggle('dark');
+        localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        updateThemeIcon();
+    }
+
+    function updateThemeIcon() {
+        const isDark = document.documentElement.classList.contains('dark');
+        document.getElementById('themeIcon').innerHTML = isDark
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
+    }
+
+    function saveProxyPref() {
+        localStorage.setItem('cfProxyPref', document.getElementById('proxySelect').value);
+    }
+
+    document.addEventListener('DOMContentLoaded', initTheme);
+
+    // ==================== MANAJEMEN AKUN ====================
+    function getAccounts() {
+        try {
+            return JSON.parse(localStorage.getItem('cfAccounts_v4') || '[]');
+        } catch { return []; }
+    }
+
+    function saveAccounts(accounts) {
+        localStorage.setItem('cfAccounts_v4', JSON.stringify(accounts));
+    }
+
+    function toggleAddAccountForm() {
+        const form = document.getElementById('addAccountForm');
+        const isHidden = form.classList.contains('hidden');
+        form.classList.toggle('hidden');
+        if (isHidden) {
+            document.getElementById('newAccountLabel').focus();
+        } else {
+            // Reset form
+            document.getElementById('newAccountLabel').value = '';
+            document.getElementById('newAccountEmail').value = '';
+            document.getElementById('newAccountToken').value = '';
         }
+    }
 
-        function updateThemeIcon() {
-            const isDark = document.documentElement.classList.contains('dark');
-            document.getElementById('themeIcon').innerHTML = isDark 
-                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>' 
-                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
-        }
+    function saveNewAccount() {
+        const label = document.getElementById('newAccountLabel').value.trim();
+        const email = document.getElementById('newAccountEmail').value.trim();
+        const token = document.getElementById('newAccountToken').value.trim();
 
-        function saveProxyPref() {
-            localStorage.setItem('cfProxyPref', document.getElementById('proxySelect').value);
-        }
+        if (!label) { alert('Nama akun tidak boleh kosong!'); return; }
+        if (!token) { alert('API Token / Key tidak boleh kosong!'); return; }
 
-        document.addEventListener('DOMContentLoaded', initTheme);
+        const accounts = getAccounts();
+        accounts.push({ id: Date.now().toString(), label, email, token });
+        saveAccounts(accounts);
+        renderAccountList();
+        toggleAddAccountForm();
+        showAlert(`Akun "<strong>${label}</strong>" berhasil disimpan!`, 'success');
+    }
 
-        // --- 2. ALERT & UI HELPERS ---
-        function showAlert(message, type = 'error') {
-            const box = document.getElementById('alertBox');
-            box.className = 'p-4 rounded-lg text-sm border font-medium mb-4 flex items-center justify-between';
-            
-            let colorClass = type === 'error' 
-                ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-                : type === 'success'
-                ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-                : 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
-
-            box.classList.add(...colorClass.split(' '));
-            
-            box.innerHTML = `
-                <span>${message}</span>
-                <button onclick="document.getElementById('alertBox').classList.add('hidden')" class="ml-4 font-bold opacity-70 hover:opacity-100">&times;</button>
-            `;
-            box.classList.remove('hidden');
-
-            if(type === 'success') {
-                setTimeout(() => box.classList.add('hidden'), 5000);
-            }
-        }
-
-        // --- 3. ROBUST API FETCH LOGIC WITH MULTI PROXY ---
-        async function cfApiCall(endpoint, method = 'GET', body = null) {
-            const token = document.getElementById('apiToken').value.trim();
-            const email = document.getElementById('apiEmail').value.trim();
-            if (!token) throw new Error("API Token / Global Key tidak boleh kosong!");
-            
-            localStorage.setItem('cfApiToken_v3', token);
-            localStorage.setItem('cfApiEmail_v3', email);
-
-            const proxyMode = document.getElementById('proxySelect').value;
-            const targetUrl = 'https://api.cloudflare.com/client/v4' + endpoint;
-            
-            // Konfigurasi URL berdasarkan pilihan Proxy
-            let fetchUrl = targetUrl;
-            if (proxyMode === 'corsproxy') {
-                fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-            } else if (proxyMode === 'corseu') {
-                fetchUrl = 'https://cors.eu.org/' + targetUrl;
-            } else if (proxyMode === 'thingproxy') {
-                fetchUrl = 'https://thingproxy.freeboard.io/fetch/' + targetUrl;
-            }
-
-            // Menyiapkan Header Otentikasi
-            const headers = { 'Content-Type': 'application/json' };
-            if (email !== "") {
-                headers['X-Auth-Email'] = email;
-                headers['X-Auth-Key'] = token;
-            } else {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-
-            try {
-                const response = await fetch(fetchUrl, {
-                    method: method,
-                    headers: headers,
-                    body: body ? JSON.stringify(body) : null
-                });
-
-                // Deteksi jika proxy menolak dan membalas dengan HTML
-                const contentType = response.headers.get("content-type") || "";
-                let data = null;
-                if (contentType.includes("application/json")) {
-                    data = await response.json();
-                } else {
-                    throw new Error(`Proxy error atau sedang sibuk. Ganti ke Server Proxy lain.`);
-                }
-
-                if (!response.ok || !data.success) {
-                    const errorMsg = data.errors && data.errors.length > 0 
-                        ? `${data.errors[0].code}: ${data.errors[0].message}` 
-                        : `HTTP Error ${response.status}`;
-                    throw new Error(errorMsg);
-                }
-
-                return data.result;
-
-            } catch (err) {
-                console.error("API Fetch Error Detail:", err);
-                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-                    throw new Error("Koneksi diblokir. Ganti 'Server Proxy' di menu atas ke Server 2 atau 3, lalu coba lagi.");
-                }
-                throw err;
-            }
-        }
-
-        // --- 4. APLIKASI UTAMA ---
-        let currentRecords = [];
-
-        async function fetchDomains() {
-            const btn = document.getElementById('btnLoadDomain');
-            btn.innerText = "Memuat...";
-            btn.disabled = true;
-            document.getElementById('alertBox').classList.add('hidden');
-
-            try {
-                const zones = await cfApiCall('/zones');
-                
-                if (zones.length === 0) {
-                    throw new Error("Tidak ada domain yang ditemukan. Periksa kembali email dan kunci API Anda.");
-                }
-
-                const select = document.getElementById('domainSelect');
-                select.innerHTML = '<option value="" disabled selected>-- Pilih Domain --</option>';
-                
-                zones.forEach(zone => {
-                    const opt = document.createElement('option');
-                    opt.value = zone.id;
-                    opt.text = zone.name;
-                    select.appendChild(opt);
-                });
-
-                document.getElementById('domainSection').classList.remove('hidden');
-                showAlert(`Berhasil memuat ${zones.length} domain! Silakan pilih di menu drop-down.`, 'success');
-            } catch (error) {
-                showAlert(`Error: ${error.message}`);
-                document.getElementById('domainSection').classList.add('hidden');
-                document.getElementById('workspaceSection').classList.add('hidden');
-            } finally {
-                btn.innerText = "Load Domain";
-                btn.disabled = false;
-            }
-        }
-
-        function onDomainChange() {
-            const select = document.getElementById('domainSelect');
-            const domainName = select.options[select.selectedIndex].text;
-            
-            document.getElementById('workspaceSection').classList.remove('hidden');
-            document.getElementById('domainSuffix').innerText = `.${domainName}`;
-            
-            if(document.getElementById('manageView').classList.contains('hidden') === false) {
-                loadDnsRecords();
-            }
-        }
-
-        function switchTab(tab) {
-            const tabCreate = document.getElementById('tabCreate');
-            const tabManage = document.getElementById('tabManage');
-            const formCreate = document.getElementById('createForm');
-            const viewManage = document.getElementById('manageView');
-
-            if (tab === 'create') {
-                tabCreate.className = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-white bg-blue-600 shadow';
-                tabManage.className = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white bg-transparent';
-                formCreate.classList.remove('hidden');
-                viewManage.classList.add('hidden');
-            } else {
-                tabManage.className = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-white bg-blue-600 shadow';
-                tabCreate.className = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white bg-transparent';
-                formCreate.classList.add('hidden');
-                viewManage.classList.remove('hidden');
-                loadDnsRecords();
-            }
-        }
-
-        // --- BIKIN SUBDOMAIN ---
-        document.getElementById('createForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btnCreate');
-            const zoneId = document.getElementById('domainSelect').value;
-            const select = document.getElementById('domainSelect');
-            const zoneName = select.options[select.selectedIndex].text;
-            
-            const sub = document.getElementById('subdomain').value.trim();
-            const ip = document.getElementById('targetIp').value.trim();
-            const proxied = document.getElementById('proxied').checked;
-            
-            const cleanSub = sub.replace(`.${zoneName}`, ''); 
-            const fullName = `${cleanSub}.${zoneName}`;
-
-            btn.disabled = true;
-            btn.innerText = 'Memproses...';
-            document.getElementById('alertBox').classList.add('hidden');
-
-            try {
-                await cfApiCall(`/zones/${zoneId}/dns_records`, 'POST', {
-                    type: 'A',
-                    name: fullName,
-                    content: ip,
-                    ttl: 1,
-                    proxied: proxied
-                });
-
-                showAlert(`Berhasil! Subdomain <strong>${fullName}</strong> telah mengarah ke <strong>${ip}</strong>`, 'success');
-                
-                document.getElementById('subdomain').value = '';
-                document.getElementById('targetIp').value = '';
-                document.getElementById('proxied').checked = false;
-            } catch (error) {
-                showAlert(`Gagal Membuat Subdomain: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'Buat Record Baru';
-            }
+    function deleteAccount(id) {
+        const accounts = getAccounts();
+        const acc = accounts.find(a => a.id === id);
+        if (!acc) return;
+        openDeleteModal(`Hapus akun "${acc.label}"?`, () => {
+            const updated = accounts.filter(a => a.id !== id);
+            saveAccounts(updated);
+            renderAccountList();
         });
+    }
 
-        // --- KELOLA DNS (READ & DELETE) ---
-        async function loadDnsRecords() {
-            const zoneId = document.getElementById('domainSelect').value;
-            if(!zoneId) return;
+    function activateAccount(id) {
+        const accounts = getAccounts();
+        const acc = accounts.find(a => a.id === id);
+        if (!acc) return;
 
-            const tbody = document.getElementById('dnsTableBody');
-            const btn = document.getElementById('btnReloadDns');
-            
-            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-blue-500 font-bold animate-pulse">Memuat DNS Records...</td></tr>';
-            btn.disabled = true;
-            document.getElementById('alertBox').classList.add('hidden');
+        document.getElementById('apiToken').value = acc.token;
+        document.getElementById('apiEmail').value = acc.email;
 
-            try {
-                const records = await cfApiCall(`/zones/${zoneId}/dns_records?per_page=100`);
-                currentRecords = records;
-                renderDnsTable();
-            } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Gagal: ${error.message}</td></tr>`;
-            } finally {
-                btn.disabled = false;
-                document.getElementById('selectAll').checked = false;
-                updateBulkDeleteButton();
-            }
+        const label = document.getElementById('activeAccountLabel');
+        label.textContent = `✓ Akun aktif: ${acc.label}`;
+        label.classList.remove('hidden');
+
+        // Update visual active card
+        renderAccountList(id);
+        showAlert(`Akun "<strong>${acc.label}</strong>" diaktifkan. Klik "Load Domain" untuk memuat domain.`, 'info');
+    }
+
+    function renderAccountList(activeId = null) {
+        const accounts = getAccounts();
+        const container = document.getElementById('accountList');
+        const noMsg = document.getElementById('noAccountMsg');
+
+        if (accounts.length === 0) {
+            container.innerHTML = '<p class="text-sm text-slate-400 dark:text-slate-500 text-center py-4" id="noAccountMsg">Belum ada akun tersimpan. Klik "Tambah Akun" untuk mulai.</p>';
+            return;
         }
 
-        function renderDnsTable() {
-            const tbody = document.getElementById('dnsTableBody');
-            if (currentRecords.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">Domain ini belum memiliki record apapun.</td></tr>';
-                return;
-            }
+        container.innerHTML = accounts.map(acc => `
+            <div class="account-card flex items-center gap-3 p-3 rounded-xl border ${acc.id === activeId ? 'active border-blue-500 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-light-border dark:border-dark-border bg-slate-50 dark:bg-slate-800/40'} cursor-pointer" onclick="activateAccount('${acc.id}')">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 select-none">
+                    ${acc.label.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-sm text-slate-800 dark:text-white truncate">${acc.label}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">${acc.email || 'API Token (tanpa email)'}</p>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    ${acc.id === activeId ? '<span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">Aktif</span>' : ''}
+                    <button onclick="event.stopPropagation(); deleteAccount('${acc.id}')" title="Hapus akun"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
 
-            tbody.innerHTML = currentRecords.map(rec => {
-                const isProxy = rec.proxied;
-                return `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition group">
-                    <td class="p-3 text-center border-t border-light-border dark:border-dark-border">
-                        <input type="checkbox" class="record-cb w-4 h-4 rounded cursor-pointer" value="${rec.id}" onchange="updateBulkDeleteButton()">
-                    </td>
-                    <td class="p-3 border-t border-light-border dark:border-dark-border font-bold ${rec.type === 'A' ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'}">${rec.type}</td>
-                    <td class="p-3 border-t border-light-border dark:border-dark-border font-mono text-slate-900 dark:text-white">${rec.name}</td>
-                    <td class="p-3 border-t border-light-border dark:border-dark-border truncate max-w-[200px] text-slate-600 dark:text-slate-400" title="${rec.content}">${rec.content}</td>
-                    <td class="p-3 border-t border-light-border dark:border-dark-border text-center">
-                        ${isProxy ? '<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-[10px] font-bold">PROXIED</span>' : '<span class="bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 px-2 py-1 rounded text-[10px] font-bold">DNS ONLY</span>'}
-                    </td>
-                </tr>
-            `}).join('');
+    // ==================== ALERT ====================
+    function showAlert(message, type = 'error') {
+        const box = document.getElementById('alertBox');
+        box.className = 'p-4 rounded-lg text-sm border font-medium flex items-center justify-between fade-in';
+
+        const colorClass = type === 'error'
+            ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+            : type === 'success'
+            ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+            : type === 'warning'
+            ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800'
+            : 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
+
+        box.classList.add(...colorClass.split(' '));
+        box.innerHTML = `<span>${message}</span><button onclick="document.getElementById('alertBox').classList.add('hidden')" class="ml-4 font-bold text-lg opacity-60 hover:opacity-100 leading-none">&times;</button>`;
+        box.classList.remove('hidden');
+
+        if (type === 'success' || type === 'info') {
+            setTimeout(() => box.classList.add('hidden'), 5000);
+        }
+    }
+
+    // ==================== MODAL DELETE ====================
+    function openDeleteModal(desc, cb) {
+        document.getElementById('deleteModalDesc').textContent = desc;
+        deleteCallback = cb;
+        document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        deleteCallback = null;
+    }
+
+    function confirmDelete() {
+        if (deleteCallback) {
+            deleteCallback();
+        }
+        closeDeleteModal();
+    }
+
+    // ==================== CF API CALL ====================
+    async function cfApiCall(endpoint, method = 'GET', body = null) {
+        const token = document.getElementById('apiToken').value.trim();
+        const email = document.getElementById('apiEmail').value.trim();
+        if (!token) throw new Error("API Token / Global Key tidak boleh kosong!");
+
+        localStorage.setItem('cfApiToken_v4', token);
+        localStorage.setItem('cfApiEmail_v4', email);
+
+        const proxyMode = document.getElementById('proxySelect').value;
+        const targetUrl = 'https://api.cloudflare.com/client/v4' + endpoint;
+
+        let fetchUrl = targetUrl;
+        if (proxyMode === 'corsproxy') {
+            fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+        } else if (proxyMode === 'corseu') {
+            fetchUrl = 'https://cors.eu.org/' + targetUrl;
+        } else if (proxyMode === 'thingproxy') {
+            fetchUrl = 'https://thingproxy.freeboard.io/fetch/' + targetUrl;
         }
 
-        function toggleSelectAll() {
-            const selectAll = document.getElementById('selectAll');
-            const checkboxes = document.querySelectorAll('.record-cb');
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        const headers = { 'Content-Type': 'application/json' };
+        if (email !== '') {
+            headers['X-Auth-Email'] = email;
+            headers['X-Auth-Key'] = token;
+        } else {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            const response = await fetch(fetchUrl, {
+                method: method,
+                headers: headers,
+                body: body ? JSON.stringify(body) : null
+            });
+
+            // ===== FIX: Handle DELETE response (204 No Content atau body kosong) =====
+            if (method === 'DELETE') {
+                if (response.ok || response.status === 204) {
+                    return { success: true };
+                }
+                // Coba baca error dari body
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const errData = await response.json();
+                    const errMsg = errData.errors && errData.errors.length > 0
+                        ? `${errData.errors[0].code}: ${errData.errors[0].message}`
+                        : `HTTP Error ${response.status}`;
+                    throw new Error(errMsg);
+                }
+                throw new Error(`Gagal hapus record. HTTP ${response.status}`);
+            }
+
+            // Response non-DELETE
+            const contentType = response.headers.get('content-type') || '';
+            let data = null;
+
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                throw new Error(`Proxy error atau sedang sibuk. Coba ganti Server Proxy.`);
+            }
+
+            if (!response.ok || !data.success) {
+                const errorMsg = data.errors && data.errors.length > 0
+                    ? `${data.errors[0].code}: ${data.errors[0].message}`
+                    : `HTTP Error ${response.status}`;
+                throw new Error(errorMsg);
+            }
+
+            return data.result;
+
+        } catch (err) {
+            console.error('API Error:', err);
+            if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                throw new Error("Koneksi diblokir. Ganti 'Server Proxy' ke alternatif lain, lalu coba lagi.");
+            }
+            throw err;
+        }
+    }
+
+    // ==================== LOAD DOMAINS ====================
+    async function fetchDomains() {
+        const btn = document.getElementById('btnLoadDomain');
+        btn.innerText = 'Memuat...';
+        btn.disabled = true;
+        document.getElementById('alertBox').classList.add('hidden');
+
+        try {
+            const zones = await cfApiCall('/zones');
+            if (zones.length === 0) throw new Error("Tidak ada domain ditemukan. Periksa email & API key Anda.");
+
+            const select = document.getElementById('domainSelect');
+            select.innerHTML = '<option value="" disabled selected>-- Pilih Domain --</option>';
+            zones.forEach(zone => {
+                const opt = document.createElement('option');
+                opt.value = zone.id;
+                opt.text = zone.name;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('domainSection').classList.remove('hidden');
+            showAlert(`Berhasil memuat <strong>${zones.length}</strong> domain! Silakan pilih di drop-down.`, 'success');
+        } catch (error) {
+            showAlert(`Error: ${error.message}`);
+            document.getElementById('domainSection').classList.add('hidden');
+            document.getElementById('workspaceSection').classList.add('hidden');
+        } finally {
+            btn.innerText = 'Load Domain';
+            btn.disabled = false;
+        }
+    }
+
+    function onDomainChange() {
+        const select = document.getElementById('domainSelect');
+        const domainName = select.options[select.selectedIndex].text;
+        document.getElementById('workspaceSection').classList.remove('hidden');
+        document.getElementById('domainSuffix').innerText = `.${domainName}`;
+        if (!document.getElementById('manageView').classList.contains('hidden')) {
+            loadDnsRecords();
+        }
+    }
+
+    // ==================== TAB SWITCHER ====================
+    function switchTab(tab) {
+        const tabCreate = document.getElementById('tabCreate');
+        const tabManage = document.getElementById('tabManage');
+        const formCreate = document.getElementById('createForm');
+        const viewManage = document.getElementById('manageView');
+        const activeClass = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-white bg-blue-600 shadow';
+        const inactiveClass = 'flex-1 py-2 text-sm font-bold rounded-md transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white bg-transparent';
+
+        if (tab === 'create') {
+            tabCreate.className = activeClass;
+            tabManage.className = inactiveClass;
+            formCreate.classList.remove('hidden');
+            viewManage.classList.add('hidden');
+        } else {
+            tabManage.className = activeClass;
+            tabCreate.className = inactiveClass;
+            formCreate.classList.add('hidden');
+            viewManage.classList.remove('hidden');
+            loadDnsRecords();
+        }
+    }
+
+    // ==================== BUAT SUBDOMAIN ====================
+    document.getElementById('createForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnCreate');
+        const zoneId = document.getElementById('domainSelect').value;
+        const select = document.getElementById('domainSelect');
+        const zoneName = select.options[select.selectedIndex].text;
+
+        const sub = document.getElementById('subdomain').value.trim();
+        const ip = document.getElementById('targetIp').value.trim();
+        const proxied = document.getElementById('proxied').checked;
+        const cleanSub = sub.replace(`.${zoneName}`, '');
+        const fullName = `${cleanSub}.${zoneName}`;
+
+        btn.disabled = true;
+        btn.innerText = 'Memproses...';
+        document.getElementById('alertBox').classList.add('hidden');
+
+        try {
+            await cfApiCall(`/zones/${zoneId}/dns_records`, 'POST', {
+                type: 'A', name: fullName, content: ip, ttl: 1, proxied
+            });
+            showAlert(`Berhasil! Subdomain <strong>${fullName}</strong> → <strong>${ip}</strong> ${proxied ? '🟠 Proxied' : '⚫ DNS Only'}`, 'success');
+            document.getElementById('subdomain').value = '';
+            document.getElementById('targetIp').value = '';
+            document.getElementById('proxied').checked = false;
+        } catch (error) {
+            showAlert(`Gagal Membuat Subdomain: ${error.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Buat Record Baru';
+        }
+    });
+
+    // ==================== LOAD DNS RECORDS ====================
+    async function loadDnsRecords() {
+        const zoneId = document.getElementById('domainSelect').value;
+        if (!zoneId) return;
+
+        const tbody = document.getElementById('dnsTableBody');
+        const btn = document.getElementById('btnReloadDns');
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-blue-500 font-bold animate-pulse">Memuat DNS Records...</td></tr>';
+        btn.disabled = true;
+        document.getElementById('alertBox').classList.add('hidden');
+
+        try {
+            const records = await cfApiCall(`/zones/${zoneId}/dns_records?per_page=100`);
+            currentRecords = records;
+            renderDnsTable();
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Gagal: ${error.message}</td></tr>`;
+        } finally {
+            btn.disabled = false;
+            document.getElementById('selectAll').checked = false;
             updateBulkDeleteButton();
         }
+    }
 
-        function updateBulkDeleteButton() {
-            const checkedCount = document.querySelectorAll('.record-cb:checked').length;
-            const btn = document.getElementById('btnBulkDelete');
-            const countText = document.getElementById('selectedCount');
-            
-            countText.innerText = `${checkedCount} record terpilih`;
-            btn.disabled = checkedCount === 0;
+    // ==================== RENDER TABLE ====================
+    function renderDnsTable() {
+        const tbody = document.getElementById('dnsTableBody');
+        if (!currentRecords || currentRecords.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Domain ini belum memiliki record apapun.</td></tr>';
+            return;
         }
 
-        async function bulkDeleteRecords() {
-            const checkboxes = document.querySelectorAll('.record-cb:checked');
-            if (checkboxes.length === 0) return;
-            
-            if (!confirm(`PERINGATAN!\n\nAnda yakin ingin menghapus ${checkboxes.length} DNS record secara permanen? Website mungkin tidak bisa diakses jika Anda salah hapus.`)) return;
+        tbody.innerHTML = currentRecords.map(rec => {
+            const isProxy = rec.proxied;
+            const canToggleProxy = rec.type === 'A' || rec.type === 'AAAA' || rec.type === 'CNAME';
+            return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition group">
+                <td class="p-3 text-center border-t border-light-border dark:border-dark-border">
+                    <input type="checkbox" class="record-cb w-4 h-4 rounded cursor-pointer" value="${rec.id}" onchange="updateBulkDeleteButton()">
+                </td>
+                <td class="p-3 border-t border-light-border dark:border-dark-border font-bold ${rec.type === 'A' ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'}">${rec.type}</td>
+                <td class="p-3 border-t border-light-border dark:border-dark-border font-mono text-slate-900 dark:text-white text-[11px]">${rec.name}</td>
+                <td class="p-3 border-t border-light-border dark:border-dark-border truncate max-w-[160px] text-slate-600 dark:text-slate-400 font-mono text-[11px]" title="${rec.content}">${rec.content}</td>
+                <td class="p-3 border-t border-light-border dark:border-dark-border text-center">
+                    ${canToggleProxy
+                        ? `<button onclick="toggleProxy('${rec.id}', ${isProxy})" title="${isProxy ? 'Klik untuk nonaktifkan proxy' : 'Klik untuk aktifkan proxy'}"
+                            class="proxy-toggle-btn inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition
+                            ${isProxy
+                                ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 hover:bg-orange-200 dark:hover:bg-orange-900/50'
+                                : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'}">
+                            ${isProxy ? '🟠 PROXIED' : '⚫ DNS ONLY'}
+                            <svg class="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                          </button>`
+                        : `<span class="text-[10px] text-slate-400 dark:text-slate-500">N/A</span>`
+                    }
+                </td>
+                <td class="p-3 border-t border-light-border dark:border-dark-border text-center">
+                    <button onclick="deleteSingleRecord('${rec.id}', '${rec.name.replace(/'/g, "\\'")}')" title="Hapus record ini"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
 
+    // ==================== TOGGLE PROXY ====================
+    async function toggleProxy(recordId, currentlyProxied) {
+        const zoneId = document.getElementById('domainSelect').value;
+        const record = currentRecords.find(r => r.id === recordId);
+        if (!record) return;
+
+        const newProxied = !currentlyProxied;
+        const actionLabel = newProxied ? '🟠 Proxied' : '⚫ DNS Only';
+
+        // Langsung toggle tanpa modal (operasi ringan)
+        try {
+            showAlert(`Mengubah proxy untuk <strong>${record.name}</strong>...`, 'info');
+            await cfApiCall(`/zones/${zoneId}/dns_records/${recordId}`, 'PUT', {
+                type: record.type,
+                name: record.name,
+                content: record.content,
+                ttl: record.ttl || 1,
+                proxied: newProxied
+            });
+            showAlert(`Berhasil! <strong>${record.name}</strong> sekarang <strong>${actionLabel}</strong>`, 'success');
+            // Update local data
+            const idx = currentRecords.findIndex(r => r.id === recordId);
+            if (idx !== -1) currentRecords[idx].proxied = newProxied;
+            renderDnsTable();
+            updateBulkDeleteButton();
+        } catch (error) {
+            showAlert(`Gagal ubah proxy: ${error.message}`);
+        }
+    }
+
+    // ==================== DELETE SINGLE ====================
+    function deleteSingleRecord(recordId, recordName) {
+        openDeleteModal(`Hapus record "${recordName}"?`, async () => {
+            const zoneId = document.getElementById('domainSelect').value;
+            try {
+                await cfApiCall(`/zones/${zoneId}/dns_records/${recordId}`, 'DELETE');
+                showAlert(`Record <strong>${recordName}</strong> berhasil dihapus.`, 'success');
+                currentRecords = currentRecords.filter(r => r.id !== recordId);
+                renderDnsTable();
+                updateBulkDeleteButton();
+            } catch (error) {
+                showAlert(`Gagal hapus record: ${error.message}`);
+            }
+        });
+    }
+
+    // ==================== BULK DELETE ====================
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        document.querySelectorAll('.record-cb').forEach(cb => cb.checked = selectAll.checked);
+        updateBulkDeleteButton();
+    }
+
+    function updateBulkDeleteButton() {
+        const checkedCount = document.querySelectorAll('.record-cb:checked').length;
+        const btn = document.getElementById('btnBulkDelete');
+        document.getElementById('selectedCount').innerText = `${checkedCount} record terpilih`;
+        btn.disabled = checkedCount === 0;
+    }
+
+    async function bulkDeleteRecords() {
+        const checkboxes = document.querySelectorAll('.record-cb:checked');
+        if (checkboxes.length === 0) return;
+
+        openDeleteModal(`Hapus ${checkboxes.length} DNS record sekaligus?`, async () => {
             const zoneId = document.getElementById('domainSelect').value;
             const btn = document.getElementById('btnBulkDelete');
-            
             btn.disabled = true;
-            document.getElementById('alertBox').classList.add('hidden');
-            
+
             let successCount = 0;
             let failCount = 0;
+            const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
 
-            for (let i = 0; i < checkboxes.length; i++) {
-                const recordId = checkboxes[i].value;
-                btn.innerText = `Menghapus (${i + 1}/${checkboxes.length})...`;
-                
+            for (let i = 0; i < idsToDelete.length; i++) {
+                const recordId = idsToDelete[i];
+                btn.innerText = `Menghapus (${i + 1}/${idsToDelete.length})...`;
                 try {
                     await cfApiCall(`/zones/${zoneId}/dns_records/${recordId}`, 'DELETE');
                     successCount++;
                 } catch (error) {
-                    console.error("Gagal hapus record ID:", recordId, error);
+                    console.error('Gagal hapus record ID:', recordId, error);
                     failCount++;
                 }
             }
 
             if (failCount === 0) {
-                showAlert(`Selesai! ${successCount} record berhasil dihapus.`, 'success');
+                showAlert(`Selesai! <strong>${successCount}</strong> record berhasil dihapus.`, 'success');
             } else {
                 showAlert(`Selesai. ${successCount} berhasil, ${failCount} gagal dihapus.`, 'warning');
             }
 
             btn.innerText = '🗑️ Hapus Terpilih';
             loadDnsRecords();
-        }
-    </script>
+        });
+    }
+</script>
 </body>
 </html>
